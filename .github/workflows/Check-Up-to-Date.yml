@@ -1,0 +1,38 @@
+name: Check Branch Up-to-Date
+on:
+  push:
+    branches:
+      - your-branch-name
+
+jobs:
+  check-up-to-date:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get remote branch commit SHA
+        id: remote_commit
+        run: |
+          REMOTE_BRANCH_SHA=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/$GITHUB_REPOSITORY/branches/your-branch-name" | \
+          jq -r '.commit.sha')
+          echo "::set-output name=sha::$REMOTE_BRANCH_SHA"
+
+      - name: Get local branch commit SHA
+        id: local_commit
+        run: |
+          LOCAL_BRANCH_SHA=$(git rev-parse HEAD)
+          echo "::set-output name=sha::$LOCAL_BRANCH_SHA"
+
+      - name: Compare commit SHAs
+        id: compare_commits
+        run: |
+          REMOTE_COMMIT="${{ steps.remote_commit.outputs.sha }}"
+          LOCAL_COMMIT="${{ steps.local_commit.outputs.sha }}"
+          if [[ "$REMOTE_COMMIT" == "$LOCAL_COMMIT" ]]; then
+            echo "Branch is up to date"
+          else
+            echo "Branch is not up to date"
+          fi
